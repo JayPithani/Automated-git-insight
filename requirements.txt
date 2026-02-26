@@ -1,0 +1,12 @@
+PyGithub
+pandas
+matplotlib
+seaborn
+fpdf2
+python-dotenv
+openai
+google-genai
+plotly
+kaleido
+streamlit
+watchdog
