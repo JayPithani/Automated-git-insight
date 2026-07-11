@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
 from src.github_connector import GithubConnector
@@ -20,50 +20,41 @@ for key, val in [('analysis_done', False), ('clean_df', None), ('summary', ''), 
 def load_css():
     css = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 
 html, body, [class*="css"], .stApp, p, li, span, div, label, button {
     font-family: 'Inter', sans-serif !important;
 }
-h1 {
+h1, h2, h3, h4 {
     font-family: 'Sora', sans-serif !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.02em !important;
     color: #2C1810 !important;
+    letter-spacing: 0 !important;
 }
-h2, h3, h4 {
-    font-family: 'Sora', sans-serif !important;
-    font-weight: 600 !important;
-    color: #3D2214 !important;
-}
+h1 { font-weight: 800 !important; }
+h2, h3, h4 { font-weight: 700 !important; }
 
 /* ── TOOLBAR white ── */
 header[data-testid="stHeader"],
 header[data-testid="stHeader"] > div,
 [data-testid="stToolbar"],
 [data-testid="stDecoration"] {
-    background-color: #FFFFFF !important;
-    background: #FFFFFF !important;
+    background: #FAF9F7 !important;
     border-bottom: 1px solid #E8E0DC !important;
 }
-header[data-testid="stHeader"] svg { fill: #5C3D2E !important; }
-#MainMenu, footer, [data-testid="stFooter"], [class*="footer"] { visibility: hidden !important; display: none !important; }
-button[kind="header"],
-[data-testid="baseButton-header"] {
-    background-color: #FFFFFF !important;
-    border: 1px solid #E8E0DC !important;
-    border-radius: 6px !important;
-    color: #5C3D2E !important;
+#MainMenu, footer, [data-testid="stFooter"], [class*="footer"],
+button[kind="header"], [data-testid="baseButton-header"] {
+    visibility: hidden !important;
+    display: none !important;
 }
 
 /* ── MAIN AREA — off white ── */
 .stApp { background-color: #FAF9F7 !important; }
 .main .block-container {
     background-color: #FAF9F7 !important;
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    max-width: 1100px;
+    padding-top: 1.8rem;
+    padding-bottom: 2.4rem;
+    max-width: 1180px;
 }
 
 /* ── SIDEBAR — reddish brown ── */
@@ -74,9 +65,9 @@ section[data-testid="stSidebar"] > div > div > div,
 [data-testid="stSidebar"],
 [data-testid="stSidebar"] > div,
 [data-testid="stSidebar"] > div:first-child {
-    background-color: #6B2D1F !important;
     background: #6B2D1F !important;
     border-right: none !important;
+    overflow-x: hidden !important;
 }
 
 /* Sidebar text colors — light on dark */
@@ -96,7 +87,7 @@ section[data-testid="stSidebar"] > div > div > div,
 [data-testid="stSidebar"] .stSelectbox > div > div {
     background-color: #7D3624 !important;
     border: 1px solid #9B4A35 !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     color: #FFFFFF !important;
     font-family: 'Inter', sans-serif !important;
 }
@@ -120,8 +111,8 @@ input[type="password"]::-ms-clear { display: none !important; }
 /* ── MAIN INPUTS ── */
 .stTextInput > div > div > input {
     background-color: #FFFFFF !important;
-    border: 1.5px solid #E8E0DC !important;
-    border-radius: 10px !important;
+    border: 1px solid #E8E0DC !important;
+    border-radius: 8px !important;
     color: #2C1810 !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 14px !important;
@@ -134,8 +125,8 @@ input[type="password"]::-ms-clear { display: none !important; }
 /* ── NUMBER INPUT white ── */
 div[data-testid="stNumberInput"] > div {
     background-color: #FFFFFF !important;
-    border: 1.5px solid #E8E0DC !important;
-    border-radius: 10px !important;
+    border: 1px solid #E8E0DC !important;
+    border-radius: 8px !important;
     overflow: hidden;
 }
 div[data-testid="stNumberInput"] input {
@@ -159,8 +150,8 @@ div[data-testid="stNumberInput"] button:hover {
 /* ── SELECTBOX ── */
 .stSelectbox > div > div {
     background-color: #FFFFFF !important;
-    border: 1.5px solid #E8E0DC !important;
-    border-radius: 10px !important;
+    border: 1px solid #E8E0DC !important;
+    border-radius: 8px !important;
     color: #2C1810 !important;
 }
 
@@ -169,10 +160,10 @@ div[data-testid="stNumberInput"] button:hover {
     background-color: #6B2D1F !important;
     color: #FFFFFF !important;
     border: none !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 14px !important;
-    font-weight: 500 !important;
+    font-weight: 800 !important;
     padding: 10px 28px !important;
 }
 .stButton > button:hover {
@@ -180,11 +171,11 @@ div[data-testid="stNumberInput"] button:hover {
     color: #FFFFFF !important;
 }
 .stDownloadButton > button {
-    background-color: #10B981 !important;
+    background-color: #8B3A28 !important;
     color: #FFFFFF !important;
     border: none !important;
-    border-radius: 10px !important;
-    font-weight: 500 !important;
+    border-radius: 8px !important;
+    font-weight: 800 !important;
 }
 
 /* ── METRIC CARDS ── */
@@ -192,10 +183,10 @@ div[data-testid="stNumberInput"] button:hover {
 div[data-testid="metric-container"] {
     background-color: #FFFFFF !important;
     background: #FFFFFF !important;
-    border: 1.5px solid #E8D5CF !important;
-    border-radius: 14px !important;
+    border: 1px solid #E8D5CF !important;
+    border-radius: 8px !important;
     padding: 18px !important;
-    box-shadow: 0 1px 4px rgba(107,45,31,0.06) !important;
+    box-shadow: 0 12px 26px rgba(24,32,42,0.06) !important;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -206,7 +197,7 @@ div[data-testid="metric-container"] {
     font-family: Inter, sans-serif !important;
     font-size: 11px !important;
     color: #9B6B5A !important;
-    font-weight: 600 !important;
+    font-weight: 800 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.07em !important;
     visibility: visible !important;
@@ -216,7 +207,7 @@ div[data-testid="metric-container"] {
 [data-testid="stMetricValue"] div {
     font-family: Sora, sans-serif !important;
     font-size: 26px !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     color: #2C1810 !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -228,42 +219,145 @@ div[data-testid="metric-container"] {
 
 /* ── TABS ── */
 .stTabs [data-baseweb="tab-list"] {
-    background-color: transparent !important;
-    border-bottom: 1.5px solid #E8E0DC !important;
-    gap: 0 !important;
+    background-color: #F5EDE9 !important;
+    border: 1px solid #E8E0DC !important;
+    border-radius: 8px !important;
+    padding: 4px !important;
+    gap: 4px !important;
 }
 .stTabs [data-baseweb="tab"] {
     background-color: transparent !important;
     color: #B08070 !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 13px !important;
-    font-weight: 500 !important;
-    padding: 10px 22px !important;
-    border-bottom: 2px solid transparent !important;
-    border-radius: 0 !important;
+    font-weight: 800 !important;
+    padding: 9px 16px !important;
+    border-radius: 6px !important;
 }
 .stTabs [aria-selected="true"] {
-    color: #6B2D1F !important;
-    border-bottom: 2px solid #6B2D1F !important;
-    background-color: transparent !important;
+    color: #2C1810 !important;
+    background-color: #FFFFFF !important;
+    box-shadow: 0 6px 16px rgba(24,32,42,0.08) !important;
 }
 .stTabs [data-baseweb="tab-panel"] {
     background-color: #FFFFFF !important;
-    border: 1.5px solid #E8E0DC !important;
-    border-top: none !important;
-    border-radius: 0 0 14px 14px !important;
+    border: 1px solid #E8D5CF !important;
+    border-radius: 8px !important;
+    margin-top: 12px !important;
     padding: 22px !important;
 }
 
 /* ── MISC ── */
-.stAlert { border-radius: 10px !important; }
-[data-testid="stImage"] img {
-    border-radius: 12px !important;
-    border: 1px solid #E8E0DC !important;
+.stAlert { border-radius: 8px !important; }
+.stAlert p, .stAlert span, .stAlert div,
+[data-testid="stAlert"] p, [data-testid="stAlert"] span, [data-testid="stAlert"] div,
+[role="alert"] p, [role="alert"] span, [role="alert"] div {
+    color: #2C1810 !important;
 }
-hr { border-color: #E8E0DC !important; }
+[data-testid="stImage"] img {
+    border-radius: 8px !important;
+    border: 1px solid #E8D5CF !important;
+}
+hr { border-color: #E8D5CF !important; }
 [data-testid="stProgressBar"] > div > div {
     background-color: #6B2D1F !important;
+}
+
+.gi-hero {
+    background: #FFFFFF;
+    border: 1px solid #E8D5CF;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 18px 42px rgba(24,32,42,0.07);
+    margin-bottom: 18px;
+}
+.gi-kicker, .gi-section-label, .gi-sidebar-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+.gi-kicker { color: #6B2D1F; margin-bottom: 8px; }
+.gi-title {
+    color: #2C1810;
+    font-family: Sora, sans-serif;
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.08;
+    margin: 0 0 8px;
+}
+.gi-subtitle {
+    color: #B08070;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0;
+    max-width: 720px;
+}
+.gi-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.gi-chip {
+    background: #F5EDE9;
+    border: 1px solid #E8D5CF;
+    border-radius: 999px;
+    color: #6B2D1F;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 7px 10px;
+}
+.gi-chip strong { color: #8B3A28; }
+.gi-panel {
+    background: #FFFFFF;
+    border: 1px solid #E8D5CF;
+    border-radius: 8px;
+    padding: 18px;
+    box-shadow: 0 12px 28px rgba(24,32,42,0.05);
+}
+.gi-section-label { color: #9B6B5A; margin: 4px 0 14px; }
+.gi-sidebar-card {
+    background: #7D3624;
+    border: 1px solid #9B4A35;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 8px 0 18px;
+}
+.gi-sidebar-icon {
+    align-items: center;
+    background: #6B2D1F;
+    border-radius: 8px;
+    display: flex;
+    height: 42px;
+    justify-content: center;
+    width: 42px;
+}
+.gi-sidebar-title {
+    color: #FFFFFF;
+    font-family: Sora, sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    margin-top: 12px;
+}
+.gi-sidebar-subtitle { color: #F0C4B4; font-size: 12px; margin-top: 3px; }
+.gi-sidebar-label { color: #F0C4B4; margin: 18px 0 7px; }
+.gi-note {
+    border-left: 3px solid #8B3A28;
+    color: #F0C4B4;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 18px;
+    padding-left: 10px;
+}
+
+[data-testid="stSidebarHeader"], [data-testid="stSidebarHeader"] *,
+[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarCollapseButton"] *,
+[data-testid="collapsedControl"], [data-testid="collapsedControl"] *,
+button[aria-label*="keyboard_double"],
+[data-testid="stSidebar"] button:has(.material-symbols-rounded),
+[data-testid="stSidebar"] button:has(.material-symbols-outlined) {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
 }
 
 </style>
@@ -275,143 +369,79 @@ hr { border-color: #E8E0DC !important; }
 
 load_css()
 
-# Remove keyboard_double button via JS
-_js_hide_keyboard = """
-<script>
-function removeKeyboardBtn() {
-    var btns = document.querySelectorAll('button');
-    btns.forEach(function(btn) {
-        var label = btn.getAttribute('aria-label') || '';
-        if (label === 'keyboard_double_a' || label === 'keyboard_double_arrow_right' || label === 'keyboard_double_arrow_left') {
-            btn.style.display = 'none';
-            btn.style.width = '0';
-            btn.style.height = '0';
-            btn.style.overflow = 'hidden';
-            btn.style.position = 'absolute';
-        }
-    });
-}
-removeKeyboardBtn();
-setInterval(removeKeyboardBtn, 300);
-</script>
-"""
-st.components.v1.html(_js_hide_keyboard, height=0)
-
 # -------------------------------------------------------------------
 # SIDEBAR
 # -------------------------------------------------------------------
 with st.sidebar:
     st.markdown(
-        '<div style="display:flex;align-items:center;gap:12px;padding:10px 0 24px;">'
-        '<div style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.15);'
-        'flex-shrink:0;display:flex;align-items:center;justify-content:center;">'
-        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"'
-        ' stroke="white" stroke-width="2.2" stroke-linecap="round">'
-        '<circle cx="12" cy="12" r="4"/>'
-        '<path d="M12 2v2M12 20v2M2 12h2M20 12h2'
-        ' M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41'
-        ' M17.66 6.34l-1.41 1.41M6.34 17.66l-1.41 1.41"/>'
+        '<div class="gi-sidebar-card">'
+        '<div class="gi-sidebar-icon">'
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M4 7h16M4 12h10M4 17h7"/>'
+        '<path d="M17 14l3 3-3 3"/>'
         '</svg></div>'
-        '<div>'
-        '<div style="font-family:Sora,sans-serif;font-size:16px;font-weight:700;color:#FFFFFF;">Git-Insight</div>'
-        '<div style="font-family:Inter,sans-serif;font-size:11px;color:#F0C4B4;margin-top:1px;">Repository Analytics</div>'
-        '</div></div>',
+        '<div class="gi-sidebar-title">Git-Insight</div>'
+        '<div class="gi-sidebar-subtitle">Repository intelligence dashboard</div>'
+        '</div>',
         unsafe_allow_html=True
     )
 
-    st.markdown(
-        '<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;'
-        'color:#F0C4B4;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">'
-        '🔐 Authentication</div>',
-        unsafe_allow_html=True
-    )
+    st.markdown('<div class="gi-sidebar-label">Enter Your API</div>', unsafe_allow_html=True)
     load_dotenv()
-    env_token = os.getenv("GITHUB_TOKEN", "")
-    token = st.text_input("gh_token", value=env_token, type="password",
-                          placeholder="GitHub Personal Access Token",
+    token = st.text_input("gh_token", value="", type="password",
+                          placeholder="GitHub personal access token",
                           label_visibility="collapsed",
                           help="Required for private repos or high API limits")
 
-    st.markdown(
-        '<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;'
-        'color:#F0C4B4;letter-spacing:0.1em;text-transform:uppercase;'
-        'margin:18px 0 6px;">🤖 AI Configuration</div>',
-        unsafe_allow_html=True
-    )
+    st.markdown('<div class="gi-sidebar-label">AI Engine</div>', unsafe_allow_html=True)
     llm_provider = st.selectbox("provider", ["GEMINI", "OPENAI"], index=0,
                                 label_visibility="collapsed")
     api_key = st.text_input("api_key", type="password",
-                            placeholder=f"{llm_provider} API Key",
+                            placeholder=f"{llm_provider} API key",
                             label_visibility="collapsed")
+
+    st.markdown(
+        '<div class="gi-note">Add keys once, then analyze any public repository or GitHub username from the workbench.</div>',
+        unsafe_allow_html=True
+    )
 
     if token:   os.environ["GITHUB_TOKEN"]            = token
     if api_key: os.environ[f"{llm_provider}_API_KEY"] = api_key
     os.environ["LLM_PROVIDER"] = llm_provider
-
-    st.markdown(
-        '<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;'
-        'color:#F0C4B4;letter-spacing:0.1em;text-transform:uppercase;'
-        'margin:18px 0 8px;">💡 Quick Examples</div>',
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
-        '<span style="font-family:monospace;font-size:11px;padding:4px 10px;border-radius:6px;'
-        'background:rgba(255,255,255,0.12);color:#FFFFFF;border:1px solid rgba(255,255,255,0.2);">'
-        'streamlit/streamlit</span>'
-        '<span style="font-family:monospace;font-size:11px;padding:4px 10px;border-radius:6px;'
-        'background:rgba(255,255,255,0.12);color:#FFFFFF;border:1px solid rgba(255,255,255,0.2);">'
-        'facebook/react</span>'
-        '<span style="font-family:monospace;font-size:11px;padding:4px 10px;border-radius:6px;'
-        'background:rgba(255,255,255,0.12);color:#FFFFFF;border:1px solid rgba(255,255,255,0.2);">'
-        'JayPithani</span>'
-        '</div>',
-        unsafe_allow_html=True
-    )
 
 
 # -------------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------------
 st.markdown(
-    '<h1 style="font-family:Sora,sans-serif;font-size:28px;font-weight:700;'
-    'color:#2C1810;margin:0 0 6px;">Repository Analysis</h1>'
-    '<p style="font-family:Inter,sans-serif;font-size:14px;color:#9B6B5A;margin:0;">'
-    'Analyze commit history, get AI summaries, and visualize your coding patterns.</p>',
+    '<div class="gi-hero">'
+    '<div class="gi-kicker">Repository Analytics</div>'
+    '<div class="gi-title">Understand a codebase from its commit trail.</div>'
+    '<p class="gi-subtitle">Analyze commit cadence, contribution patterns, message categories, and AI-generated engineering insights from a repository or a full GitHub profile.</p>'
+    '<div class="gi-chips">'
+    '<span class="gi-chip"><strong>01</strong> Fetch commits</span>'
+    '<span class="gi-chip"><strong>02</strong> Classify work</span>'
+    '<span class="gi-chip"><strong>03</strong> Export PDF</span>'
+    '</div>'
+    '</div>',
     unsafe_allow_html=True
 )
-st.markdown("<hr style='margin:16px 0 20px;'>", unsafe_allow_html=True)
 
-# Search row
+st.markdown('<div class="gi-section-label">Analysis Workbench</div>', unsafe_allow_html=True)
+
 col1, col2 = st.columns([4, 1])
 with col1:
-    repo_input = st.text_input("repo", placeholder="owner/repo  or  username",
+    repo_input = st.text_input("repo", placeholder="owner/repo or GitHub username",
                                label_visibility="collapsed")
 with col2:
     days = st.number_input("Days", min_value=7, max_value=3650, value=30,
                            label_visibility="collapsed")
 
-col_btn, col_hint = st.columns([1, 3])
+col_btn, col_hint = st.columns([1.35, 3])
 with col_btn:
-    start_clicked = st.button("🔍  Analyze Repository")
-with col_hint:
-    st.markdown(
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:wrap;">'
-        '<span style="font-family:Inter,sans-serif;font-size:12px;color:#B08070;">Try:</span>'
-        '<span style="font-family:monospace;font-size:11px;background:#F5EDE9;color:#6B2D1F;'
-        'padding:3px 8px;border-radius:5px;border:1px solid #E8D5CF;">streamlit/streamlit</span>'
-        '<span style="color:#D4B5AB;">|</span>'
-        '<span style="font-family:monospace;font-size:11px;background:#F5EDE9;color:#6B2D1F;'
-        'padding:3px 8px;border-radius:5px;border:1px solid #E8D5CF;">facebook/react</span>'
-        '<span style="color:#D4B5AB;">|</span>'
-        '<span style="font-family:monospace;font-size:11px;background:#F5EDE9;color:#6B2D1F;'
-        'padding:3px 8px;border-radius:5px;border:1px solid #E8D5CF;">JayPithani</span>'
-        '<span style="font-family:Inter,sans-serif;font-size:12px;color:#B08070;">(username)</span>'
-        '</div>',
-        unsafe_allow_html=True
-    )
+    start_clicked = st.button("Analyze Repository")
 
-st.markdown("<hr style='margin:20px 0;'>", unsafe_allow_html=True)
+st.markdown('<div style="height:18px"></div>', unsafe_allow_html=True)
 
 # -------------------------------------------------------------------
 # STEP 1
@@ -424,7 +454,7 @@ if start_clicked:
         status_text  = st.empty()
         try:
             connector  = GithubConnector(token if token else None)
-            since_date = datetime.now() - timedelta(days=days)
+            since_date = datetime.now(timezone.utc) - timedelta(days=days)
 
             if "/" in repo_input:
                 if repo_input.count("/") != 1:
@@ -432,22 +462,28 @@ if start_clicked:
                     st.stop()
                 status_text.text("📥 Fetching commits...")
                 progress_bar.progress(20)
-                df = connector.fetch_commits(repo_input, since=since_date)
+                df = connector.fetch_commits(repo_input, since=since_date, max_commits=500)
             else:
                 status_text.text(f"🔍 Finding repositories for '{repo_input}'...")
                 progress_bar.progress(10)
-                repos = connector.get_user_repositories(repo_input)
+                repos = connector.get_user_repositories(repo_input, pushed_since=since_date)
                 if not repos:
                     st.error(f"❌ No repositories found for '{repo_input}'.")
                     st.stop()
                 st.info(f"📦 Found **{len(repos)}** repositories. Fetching commits…")
+                max_commits_per_repo = max(10, min(75, 500 // len(repos)))
+                st.caption(f"Scanning recently pushed non-fork repositories, max {max_commits_per_repo} commits each.")
                 all_commits = []
                 for idx, repo in enumerate(repos):
                     pct = 10 + int(60 * (idx + 1) / len(repos))
                     status_text.text(f"📥 [{idx+1}/{len(repos)}] {repo}…")
                     progress_bar.progress(pct)
                     try:
-                        repo_df = connector.fetch_commits(repo, since=since_date)
+                        repo_df = connector.fetch_commits(
+                            repo,
+                            since=since_date,
+                            max_commits=max_commits_per_repo
+                        )
                         if not repo_df.empty:
                             repo_df['repository'] = repo
                             all_commits.append(repo_df)
@@ -490,9 +526,7 @@ if st.session_state.analysis_done:
     skill_growth = st.session_state.skill_growth
 
     st.markdown(
-        '<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;'
-        'color:#B08070;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:14px;">'
-        'Overview</div>',
+        '<div class="gi-section-label">Overview</div>',
         unsafe_allow_html=True
     )
 
@@ -533,29 +567,35 @@ if st.session_state.analysis_done:
         col_a, col_b = st.columns(2)
         with col_a:
             st.markdown(
-                '<div style="background:#FDF6F4;border:1.5px solid #F0D0C8;border-radius:12px;padding:16px 18px;">'
-                '<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;color:#6B2D1F;'
-                'text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Monthly Summary</div>'
+                '<div class="gi-panel" style="box-shadow:none;margin-bottom:10px;">'
+                '<div class="gi-section-label" style="margin-bottom:0;">Monthly Summary</div>'
                 '</div>',
                 unsafe_allow_html=True
             )
-            st.write(summary)
+            if summary and summary.startswith("Error"):
+                st.warning(summary)
+            elif summary:
+                st.write(summary)
+            else:
+                st.info("No AI summary available. Check your Gemini API key.")
         with col_b:
             st.markdown(
-                '<div style="background:#F5EDE9;border:1.5px solid #E8D5CF;border-radius:12px;padding:16px 18px;">'
-                '<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;color:#8B3A28;'
-                'text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Skill Growth</div>'
+                '<div class="gi-panel" style="box-shadow:none;margin-bottom:10px;">'
+                '<div class="gi-section-label" style="margin-bottom:0;">Skill Growth</div>'
                 '</div>',
                 unsafe_allow_html=True
             )
-            st.write(skill_growth)
+            if skill_growth and skill_growth.startswith("Error"):
+                st.warning(skill_growth)
+            elif skill_growth:
+                st.write(skill_growth)
+            else:
+                st.info("No skill analysis available. Check your Gemini API key.")
 
     st.markdown("<hr style='margin:28px 0;'>", unsafe_allow_html=True)
 
     st.markdown(
-        '<div style="font-family:Inter,sans-serif;font-size:10px;font-weight:600;'
-        'color:#B08070;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:14px;">'
-        'Export Report</div>',
+        '<div class="gi-section-label">Export Report</div>',
         unsafe_allow_html=True
     )
 

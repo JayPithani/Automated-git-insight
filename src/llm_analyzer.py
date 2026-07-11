@@ -62,30 +62,41 @@ class LLMAnalyzer:
             if not self.gemini_client:
                 return "Error: Gemini client not initialized."
             
-            try:
-                # Use new Client API with generate_content
-                response = self.gemini_client.models.generate_content(
-                    model='gemini-2.0-flash-exp',
-                    contents=prompt
-                )
-                return response.text.strip()
-            except AttributeError:
-                # Handle API response structure issues
-                return "Error: Unexpected API response structure from Gemini."
-            except Exception as e:
-                error_msg = str(e).lower()
-                
-                # Handle specific error types
-                if 'rate' in error_msg or 'quota' in error_msg:
-                    return "Error: API rate limit exceeded. Please try again later or check your quota."
-                elif 'authentication' in error_msg or 'api key' in error_msg or 'unauthorized' in error_msg:
-                    return "Error: Authentication failed. Please check your Gemini API key."
-                elif 'timeout' in error_msg or 'network' in error_msg:
-                    return "Error: Network timeout. Please check your internet connection and try again."
-                elif 'safety' in error_msg or 'blocked' in error_msg:
-                    return "Error: Content was blocked by safety filters. Try rephrasing your request."
-                else:
-                    return f"Error with Gemini: {e}"
+            import time
+            models_to_try = ['gemini-2.0-flash', 'gemini-1.5-flash']
+            last_error = None
+            
+            for model_name in models_to_try:
+                for attempt in range(3):
+                    try:
+                        response = self.gemini_client.models.generate_content(
+                            model=model_name,
+                            contents=prompt
+                        )
+                        return response.text.strip()
+                    except AttributeError:
+                        return "Error: Unexpected API response structure from Gemini."
+                    except Exception as e:
+                        last_error = e
+                        error_msg = str(e).lower()
+                        if 'rate' in error_msg or 'quota' in error_msg or '429' in error_msg:
+                            wait_time = 5 * (attempt + 1)
+                            print(f"Rate limited on {model_name}, retrying in {wait_time}s (attempt {attempt+1}/3)...")
+                            time.sleep(wait_time)
+                            continue
+                        elif 'not found' in error_msg or 'not supported' in error_msg:
+                            print(f"Model {model_name} not available, trying next...")
+                            break  # try next model
+                        elif 'authentication' in error_msg or 'api key' in error_msg or 'unauthorized' in error_msg:
+                            return "Error: Authentication failed. Please check your Gemini API key."
+                        elif 'timeout' in error_msg or 'network' in error_msg:
+                            return "Error: Network timeout. Please check your internet connection and try again."
+                        elif 'safety' in error_msg or 'blocked' in error_msg:
+                            return "Error: Content was blocked by safety filters. Try rephrasing your request."
+                        else:
+                            return f"Error with Gemini: {e}"
+            
+            return f"Error: API rate limit exceeded after retries. Please wait a minute and try again. ({last_error})"
         
         return "LLM not configured."
 

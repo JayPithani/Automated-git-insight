@@ -53,7 +53,7 @@ class GithubConnector:
             print(f"Unexpected error connecting to repo {repo_name}: {e}")
             return None
 
-    def fetch_commits(self, repo_name, since=None, until=None):
+    def fetch_commits(self, repo_name, since=None, until=None, max_commits=None):
         """
         Fetches commits from a repo within a date range.
         Returns a DataFrame with raw commit data.
@@ -75,6 +75,9 @@ class GithubConnector:
             data = []
             count = 0
             for commit in commits:
+                if max_commits is not None and count >= max_commits:
+                    print(f"\nReached commit limit ({max_commits}) for {repo_name}.")
+                    break
                 try:
                     author_name = commit.commit.author.name
                     author_email = commit.commit.author.email
@@ -119,7 +122,7 @@ class GithubConnector:
             print(f"Error fetching commits: {e}")
             return pd.DataFrame()
 
-    def get_user_repositories(self, username):
+    def get_user_repositories(self, username, pushed_since=None):
         """
         Fetches all public repositories for a GitHub user.
         Returns a list of 'username/repo' strings.
@@ -127,12 +130,26 @@ class GithubConnector:
         try:
             user = self.g.get_user(username)
             repos = []
+            # Normalize pushed_since to offset-aware (UTC) if it's naive,
+            # because PyGithub returns timezone-aware pushed_at values.
+            if pushed_since and pushed_since.tzinfo is None:
+                from datetime import timezone
+                pushed_since = pushed_since.replace(tzinfo=timezone.utc)
             for repo in user.get_repos():
-                if not repo.private:  # only public repos
-                    repos.append(repo.full_name)
-            print(f"Found {len(repos)} public repositories for user '{username}'.")
-            return repos
-
+                if repo.private or repo.fork:
+                    continue
+                if pushed_since and repo.pushed_at:
+                    repo_pushed = repo.pushed_at
+                    if repo_pushed.tzinfo is None:
+                        from datetime import timezone
+                        repo_pushed = repo_pushed.replace(tzinfo=timezone.utc)
+                    if repo_pushed < pushed_since:
+                        continue
+                repos.append((repo.pushed_at or datetime.min, repo.full_name))
+            repos.sort(reverse=True)
+            repo_names = [name for _, name in repos]
+            print(f"Found {len(repo_names)} matching repositories for user '{username}'.")
+            return repo_names
         except RateLimitExceededException:
             print("Error: GitHub API rate limit exceeded while fetching repositories.")
             print("Fix: Add a valid GITHUB_TOKEN to your .env file.")
