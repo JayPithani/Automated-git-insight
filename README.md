@@ -53,6 +53,30 @@
 > [!NOTE]
 > The project uses the new `google-genai` SDK instead of the deprecated `google-generativeai` library.
 
+## 🔑 API Keys Explained
+
+This project requires **two API keys** that serve different purposes:
+
+| Key | Sidebar Field | Purpose | Free? |
+|-----|--------------|---------|-------|
+| **GitHub Token** | "Enter Your API" (top) | Fetches commits, repositories, and contributor data from GitHub | ✅ Yes |
+| **Gemini / OpenAI Key** | "AI Engine" (bottom) | Powers the AI-generated Monthly Summary and Skill Growth analysis | ✅ Yes (Gemini free tier) |
+
+### GitHub Personal Access Token
+- **What it does:** Authenticates with GitHub's API to fetch commit history, repo metadata, and contributor info.
+- **Without it:** You're limited to 60 API requests/hour (unauthenticated). With it, you get **5,000 requests/hour**.
+- **Required for:** Private repositories.
+- **Get it here:** [github.com/settings/tokens](https://github.com/settings/tokens) → Generate new token (classic) → Select `repo` scope.
+
+### Gemini API Key (or OpenAI)
+- **What it does:** Calls Google's Gemini LLM to analyze your commit messages and generate human-readable insights.
+- **Without it:** Charts and metrics still work, but the **AI Summary** tab will be empty.
+- **Get it here:** [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → Click "Create API Key" (no credit card needed).
+- **Free tier:** 15 requests/minute, 1 million tokens/day — more than enough for this tool.
+
+> [!TIP]
+> You can enter both keys either in the **`.env` file** (persisted) or directly in the **sidebar fields** (per session).
+
 ## 💻 How to Run
 
 ```bash
